@@ -38,15 +38,19 @@
 <section id="module-pycoparsec.parser">
 <span id="pycoparsec-parser-module"></span><h2>pycoparsec.parser module<a class="headerlink" href="#module-pycoparsec.parser" title="Permalink to this heading">¶</a></h2>
 <dl class="py exception">
-<dt class="sig sig-object py" id="pycoparsec.parser.DoneParser">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycoparsec.parser.</span></span><span class="sig-name descname"><span class="pre">DoneParser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">remaining</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterator</span><span class="p"><span class="pre">[</span></span><span class="pre">S</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycoparsec/parser.html#DoneParser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycoparsec.parser.DoneParser" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="pycoparsec.parser.DoneParsing">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycoparsec.parser.</span></span><span class="sig-name descname"><span class="pre">DoneParsing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">remaining:</span> <span class="pre">~typing.Iterator[~pycoparsec.parser.S]</span> <span class="pre">=</span> <span class="pre">&lt;tuple_iterator</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pycoparsec/parser.html#DoneParsing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycoparsec.parser.DoneParsing" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">S</span></code>]</p>
+<p>The parser that raised this exception reached the end of the input. Eventually, there will be ways to 
+perform early exits or otherwise indicate parsing is finished. That will be what the currently unused 
+<code class="docutils literal notranslate"><span class="pre">remaining</span></code> argument will be for.</p>
 </dd></dl>
 
 <dl class="py exception">
-<dt class="sig sig-object py" id="pycoparsec.parser.FailedParser">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycoparsec.parser.</span></span><span class="sig-name descname"><span class="pre">FailedParser</span></span><a class="reference internal" href="_modules/pycoparsec/parser.html#FailedParser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycoparsec.parser.FailedParser" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="pycoparsec.parser.FailedParsing">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycoparsec.parser.</span></span><span class="sig-name descname"><span class="pre">FailedParsing</span></span><a class="reference internal" href="_modules/pycoparsec/parser.html#FailedParsing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycoparsec.parser.FailedParsing" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+<p>The parser that raised this exception did not match the current tokens.</p>
 </dd></dl>
 
 <dl class="py class">
@@ -54,6 +58,24 @@
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pycoparsec.parser.</span></span><span class="sig-name descname"><span class="pre">Parser</span></span><a class="reference internal" href="_modules/pycoparsec/parser.html#Parser"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycoparsec.parser.Parser" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">S</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">O</span></code>]</p>
 <p>This class implements a parser-combinator style parser on arbitrary None-less iterators.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>matcher</strong> – The meat-and-potatoes of the parser. Takes in the next token from the stream, and
+the rest of the token iterator. Gives back either a constructed <em>output object</em> or None if the
+parse failed.</p></li>
+<li><p><strong>choices</strong> – A list of other Parsers to try in order if this Parser fails. By default, a newly
+constructed parser always fails, so something like <code class="docutils literal notranslate"><span class="pre">Parser().choice(parser1,</span> <span class="pre">parser2)</span></code> will
+always defer to <code class="docutils literal notranslate"><span class="pre">parser1</span></code> and then <code class="docutils literal notranslate"><span class="pre">parser2</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="pycoparsec.parser.Parser.choice">
+<span class="sig-name descname"><span class="pre">choice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">choices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pycoparsec.parser.Parser" title="pycoparsec.parser.Parser"><span class="pre">Parser</span></a><span class="p"><span class="pre">[</span></span><span class="pre">S</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">O</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pycoparsec.parser.Parser" title="pycoparsec.parser.Parser"><span class="pre">Parser</span></a><span class="p"><span class="pre">[</span></span><span class="pre">S</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">O</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/pycoparsec/parser.html#Parser.choice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycoparsec.parser.Parser.choice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a list of alternative Parsers in the case that this Parser fails.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="pycoparsec.parser.Parser.exactly">
 <span class="sig-name descname"><span class="pre">exactly</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">token</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">S</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">S</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">O</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pycoparsec.parser.Parser" title="pycoparsec.parser.Parser"><span class="pre">Parser</span></a><span class="p"><span class="pre">[</span></span><span class="pre">S</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">O</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/pycoparsec/parser.html#Parser.exactly"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycoparsec.parser.Parser.exactly" title="Permalink to this definition">¶</a></dt>
@@ -63,18 +85,16 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="pycoparsec.parser.Parser.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterator</span><span class="p"><span class="pre">[</span></span><span class="pre">S</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">O</span></span></span><a class="reference internal" href="_modules/pycoparsec/parser.html#Parser.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycoparsec.parser.Parser.run" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run this parser, producing either an output object or a [[]]</p>
+<dd><p>Run this parser.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pycoparsec.parser.Parser.then">
 <span class="sig-name descname"><span class="pre">then</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parser</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pycoparsec.parser.Parser" title="pycoparsec.parser.Parser"><span class="pre">Parser</span></a><span class="p"><span class="pre">[</span></span><span class="pre">S</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">O</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pycoparsec.parser.Parser" title="pycoparsec.parser.Parser"><span class="pre">Parser</span></a><span class="p"><span class="pre">[</span></span><span class="pre">S</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">O</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/pycoparsec/parser.html#Parser.then"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pycoparsec.parser.Parser.then" title="Permalink to this definition">¶</a></dt>
 <dd><p>Chain another parser onto this one, linking their success states together.</p>
-<dl class="simple">
-<dt>Successful parse chains call <cite>__add__</cite> on the output object to append them together. If</dt><dd><p>the default behavior of <cite>__add__</cite> does not support the behavior you want, please make a 
-new class which inherits behavior from your desired output type.</p>
-</dd>
-</dl>
+<p>Successful parse chains call <cite>__add__</cite> on the output object to append them together. If
+the default behavior of <cite>__add__</cite> does not support the behavior you want, please make a 
+new class which overrides <cite>__add__</cite> and inherits behavior from your desired output type.</p>
 </dd></dl>
 
 </dd></dl>
@@ -113,9 +133,10 @@ new class which inherits behavior from your desired output type.</p>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">pycoparsec package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-pycoparsec.parser">pycoparsec.parser module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#pycoparsec.parser.DoneParser"><code class="docutils literal notranslate"><span class="pre">DoneParser</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#pycoparsec.parser.FailedParser"><code class="docutils literal notranslate"><span class="pre">FailedParser</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycoparsec.parser.DoneParsing"><code class="docutils literal notranslate"><span class="pre">DoneParsing</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pycoparsec.parser.FailedParsing"><code class="docutils literal notranslate"><span class="pre">FailedParsing</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pycoparsec.parser.Parser"><code class="docutils literal notranslate"><span class="pre">Parser</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pycoparsec.parser.Parser.choice"><code class="docutils literal notranslate"><span class="pre">Parser.choice()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pycoparsec.parser.Parser.exactly"><code class="docutils literal notranslate"><span class="pre">Parser.exactly()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pycoparsec.parser.Parser.run"><code class="docutils literal notranslate"><span class="pre">Parser.run()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pycoparsec.parser.Parser.then"><code class="docutils literal notranslate"><span class="pre">Parser.then()</span></code></a></li>

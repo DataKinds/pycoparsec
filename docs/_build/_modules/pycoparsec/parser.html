@@ -29,19 +29,24 @@
           <div class="body" role="main">
             
   <h1>Source code for pycoparsec.parser</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Protocol</span>
+<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">tee</span><span class="p">,</span> <span class="n">chain</span>
 
 <div class="viewcode-block" id="SupportsAdd"><a class="viewcode-back" href="../../pycoparsec.html#pycoparsec.parser.SupportsAdd">[docs]</a><span class="k">class</span> <span class="nc">SupportsAdd</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="o">...</span></div>
 
 <span class="n">S</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;S&#39;</span><span class="p">)</span> <span class="c1"># Token stream type</span>
-<span class="n">O</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;O&#39;</span><span class="p">)</span> <span class="c1"># Parser output type. Repeated successful parsings call O.__add__. </span>
+<span class="n">O</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;O&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">SupportsAdd</span><span class="p">)</span> <span class="c1"># Parser output type. Repeated successful parsings call O.__add__. </span>
 
-<div class="viewcode-block" id="FailedParser"><a class="viewcode-back" href="../../pycoparsec.html#pycoparsec.parser.FailedParser">[docs]</a><span class="k">class</span> <span class="nc">FailedParser</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<div class="viewcode-block" id="FailedParsing"><a class="viewcode-back" href="../../pycoparsec.html#pycoparsec.parser.FailedParsing">[docs]</a><span class="k">class</span> <span class="nc">FailedParsing</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The parser that raised this exception did not match the current tokens.&quot;&quot;&quot;</span>
     <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DoneParser"><a class="viewcode-back" href="../../pycoparsec.html#pycoparsec.parser.DoneParser">[docs]</a><span class="k">class</span> <span class="nc">DoneParser</span><span class="p">(</span><span class="ne">Exception</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">S</span><span class="p">]):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remaining</span><span class="p">:</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">S</span><span class="p">]):</span>
+<div class="viewcode-block" id="DoneParsing"><a class="viewcode-back" href="../../pycoparsec.html#pycoparsec.parser.DoneParsing">[docs]</a><span class="k">class</span> <span class="nc">DoneParsing</span><span class="p">(</span><span class="ne">Exception</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">S</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The parser that raised this exception reached the end of the input. Eventually, there will be ways to </span>
+<span class="sd">    perform early exits or otherwise indicate parsing is finished. That will be what the currently unused </span>
+<span class="sd">    ``remaining`` argument will be for.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remaining</span><span class="p">:</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">S</span><span class="p">]</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(())):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">remaining</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="p">(</span><span class="n">tok</span> <span class="k">for</span> <span class="n">tok</span> <span class="ow">in</span> <span class="n">remaining</span><span class="p">)]</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">remaining</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;There are still tokens left in the stream! Here&#39;s what didn&#39;t get ingested:</span><span class="se">\n</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">remaining</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -49,40 +54,70 @@
             <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="Parser"><a class="viewcode-back" href="../../pycoparsec.html#pycoparsec.parser.Parser">[docs]</a><span class="k">class</span> <span class="nc">Parser</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">S</span><span class="p">,</span> <span class="n">O</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;This class implements a parser-combinator style parser on arbitrary None-less iterators.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;This class implements a parser-combinator style parser on arbitrary None-less iterators.</span>
+<span class="sd">    </span>
+<span class="sd">    :ivar matcher: The meat-and-potatoes of the parser. Takes in the next token from the stream, and</span>
+<span class="sd">        the rest of the token iterator. Gives back either a constructed *output object* or None if the</span>
+<span class="sd">        parse failed.</span>
+<span class="sd">    :ivar choices: A list of other Parsers to try in order if this Parser fails. By default, a newly</span>
+<span class="sd">        constructed parser always fails, so something like ``Parser().choice(parser1, parser2)`` will</span>
+<span class="sd">        always defer to ``parser1`` and then ``parser2``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">matcher</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">tok</span><span class="p">:</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">constructor</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">tok</span><span class="p">:</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">choices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">matcher</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">S</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">S</span><span class="p">]],</span> <span class="n">Optional</span><span class="p">[</span><span class="n">O</span><span class="p">]]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">tok</span><span class="p">,</span> <span class="n">rest</span><span class="p">:</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">choices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="s2">&quot;Parser[S, O]&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
 <div class="viewcode-block" id="Parser.exactly"><a class="viewcode-back" href="../../pycoparsec.html#pycoparsec.parser.Parser.exactly">[docs]</a>    <span class="k">def</span> <span class="nf">exactly</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="n">S</span><span class="p">,</span> <span class="n">factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">S</span><span class="p">],</span> <span class="n">O</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;Parser[S, O]&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Match one element of the input stream exactly, then exit.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">matcher</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">tok</span><span class="p">:</span> <span class="n">tok</span> <span class="o">==</span> <span class="n">token</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">constructor</span> <span class="o">=</span> <span class="n">factory</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">matcher</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">tok</span><span class="p">,</span> <span class="n">rest</span><span class="p">:</span> <span class="n">factory</span><span class="p">(</span><span class="n">tok</span><span class="p">)</span> <span class="k">if</span> <span class="n">tok</span> <span class="o">==</span> <span class="n">token</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 
 <div class="viewcode-block" id="Parser.then"><a class="viewcode-back" href="../../pycoparsec.html#pycoparsec.parser.Parser.then">[docs]</a>    <span class="k">def</span> <span class="nf">then</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="s2">&quot;Parser[S, O]&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Parser[S, O]&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Chain another parser onto this one, linking their success states together.</span>
 <span class="sd">        </span>
 <span class="sd">        Successful parse chains call `__add__` on the output object to append them together. If</span>
-<span class="sd">            the default behavior of `__add__` does not support the behavior you want, please make a </span>
-<span class="sd">            new class which inherits behavior from your desired output type.&quot;&quot;&quot;</span>
+<span class="sd">        the default behavior of `__add__` does not support the behavior you want, please make a </span>
+<span class="sd">        new class which overrides `__add__` and inherits behavior from your desired output type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">capturedMatcher</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">matcher</span>
+        <span class="k">def</span> <span class="nf">_matcher</span><span class="p">(</span><span class="n">tok</span><span class="p">,</span> <span class="n">rest</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">out</span> <span class="o">:=</span> <span class="n">capturedMatcher</span><span class="p">(</span><span class="n">tok</span><span class="p">,</span> <span class="n">rest</span><span class="p">))</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">subout</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">rest</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">subout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="k">return</span> <span class="kc">None</span>
+                <span class="k">return</span> <span class="n">out</span> <span class="o">+</span> <span class="n">subout</span>
+            <span class="k">except</span> <span class="n">FailedParsing</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">matcher</span> <span class="o">=</span> <span class="n">_matcher</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+    
+<div class="viewcode-block" id="Parser.choice"><a class="viewcode-back" href="../../pycoparsec.html#pycoparsec.parser.Parser.choice">[docs]</a>    <span class="k">def</span> <span class="nf">choice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">choices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="s2">&quot;Parser[S, O]&quot;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;Parser[S, O]&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a list of alternative Parsers in the case that this Parser fails.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">choices</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">choices</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 
+    <span class="k">def</span> <span class="fm">__ror__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="s2">&quot;Parser[S, O]&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Parser[S, O]&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Cute syntax for supplying alternatives. Allows you to use something like ``(parser1 | parser2).run()``&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="n">other</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span>
+    <span class="k">def</span> <span class="fm">__or__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="s2">&quot;Parser[S, O]&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Parser[S, O]&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Cute syntax for supplying alternatives. Allows you to use something like ``(parser1 | parser2).run()``&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="n">other</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
 <div class="viewcode-block" id="Parser.run"><a class="viewcode-back" href="../../pycoparsec.html#pycoparsec.parser.Parser.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">iter</span><span class="p">:</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">S</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">O</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run this parser, producing either an output object or a [[]]&quot;&quot;&quot;</span>
-        <span class="k">while</span> <span class="p">(</span><span class="n">tok</span> <span class="o">:=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">,</span> <span class="kc">None</span><span class="p">)):</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">matcher</span><span class="p">(</span><span class="n">tok</span><span class="p">):</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">constructor</span><span class="p">(</span><span class="n">tok</span><span class="p">)</span>
-            <span class="k">def</span> <span class="nf">regenerated</span><span class="p">():</span>
-                <span class="k">yield</span> <span class="n">tok</span>
-                <span class="k">yield from</span> <span class="nb">iter</span>
-            <span class="k">for</span> <span class="n">subparser</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">choices</span><span class="p">:</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="n">subparser</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">regenerated</span><span class="p">())</span>
-                <span class="k">except</span> <span class="n">FailedParser</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Failed subparser&quot;</span><span class="p">)</span>
-            <span class="k">raise</span> <span class="n">FailedParser</span></div></div>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run this parser.&quot;&quot;&quot;</span>
+        <span class="n">ourTee</span><span class="p">,</span> <span class="o">*</span><span class="n">tees</span> <span class="o">=</span> <span class="n">tee</span><span class="p">(</span><span class="nb">iter</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">choices</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">tok</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">ourTee</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">out</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">matcher</span><span class="p">(</span><span class="n">tok</span><span class="p">,</span> <span class="n">ourTee</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">out</span>
+        <span class="k">for</span> <span class="n">teenum</span><span class="p">,</span> <span class="n">subparser</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">choices</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">subout</span> <span class="o">=</span> <span class="n">subparser</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tees</span><span class="p">[</span><span class="n">teenum</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">subout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span> <span class="k">return</span> <span class="n">subout</span>
+            <span class="k">except</span> <span class="n">FailedParsing</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed subparser </span><span class="si">{</span><span class="n">teenum</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">FailedParsing</span></div></div>
 </pre></div>
 
           </div>

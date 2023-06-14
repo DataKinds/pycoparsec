@@ -9,6 +9,27 @@ My goals for the project are as follows:
 * Type safety, or at least as close to it as Python can get. The whole library is [PEP484](https://peps.python.org/pep-0484/) type hinted. I've opted to keep it 3.8 compatible -- that means no `typing.Self` or subscripting `list`. That can change in the future.
 * The ability to ingest arbitrary iterators. This means no peeking ahead at the rest of the tokens, and this means sexy error messages would require me to do hella extra bookkeeping. 
 * The ability to construct arbitrary Python objects spat directly out of the parser. It currently does this by folding successive objects with `+`, so if you want to construct objects in a smarter way you'll have to construct your own output classes. There's some funky-ness with how object construction even happens, with the method to construct intermediate output objects embedded directly in the signature of `Parser.exactly`. I am not sure I am satisfied with this yet. No monoids and semigroups means no `mappend` and `<>` to automagically build objects for us.
+* Rich test suite. I haven't used `pytest` much, but damnit, I'm gonna learn! Tomorrow.
 * Code readability. In a perfect world I would like the main chunk of the code to be a well documented ~500 LoC. You should be able to audit the whole library in an evening, and emerge on the other side with a full understanding of it.
 
 PRs, issues, and contributions welcome. Thanks for reading.
+
+Using the library
+---
+Everything revolves around the `Parser` object. Construct one, then pass a factory to `Parser.exactly` or combine it with other parsers with `Parser.choice` or `Parser.then`. A parser that didn't have `Parser.exactly` called will always fail, and will either end the chain it is in or proceed to the next alternative. It is dead simple -- the rest is up to you. Here's a fun recipe:
+
+```py
+from pycoparsec import Parser
+
+def string_parser(wanted_string):
+    out = Parser().exactly(wanted_string[0], str)
+    for c in wanted_string[1:]:
+        out.then(Parser().exactly(c, str))
+    return out
+
+string_parser("Hello").run(c for c in "Hello, world!") # => "Hello"
+```
+
+Building the docs, running the tests, you know...
+---
+This package is built using [Hatch](https://hatch.pypa.io/latest/). This project was partly an excuse to try Hatch, so I've used it to the highest degree possible. Type `hatch env show` to list all of the goodies available to you. If you want to run one of the listed scripts, the syntax is `hatch run <ENV NAME>:<SCRIPT NAME>`. So for example, to open the docs the command is `hatch run docs:open`, which automatically builds them and calls `xdg-open` on the index. 

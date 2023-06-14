@@ -8,11 +8,14 @@ S = TypeVar('S') # Token stream type
 O = TypeVar('O', bound=SupportsAdd) # Parser output type. Repeated successful parsings call O.__add__. 
 
 class FailedParsing(Exception):
+    """The parser that raised this exception did not match the current tokens."""
     pass
 
 class DoneParsing(Exception, Generic[S]):
-    """Unused at the moment. Keeping it around because it might be handy."""
-    def __init__(self, remaining: Iterator[S]):
+    """The parser that raised this exception reached the end of the input. Eventually, there will be ways to 
+    perform early exits or otherwise indicate parsing is finished. That will be what the currently unused 
+    ``remaining`` argument will be for."""
+    def __init__(self, remaining: Iterator[S] = iter(())):
         self.remaining = [*(tok for tok in remaining)]
         if len(self.remaining) > 0:
             super().__init__(f"There are still tokens left in the stream! Here's what didn't get ingested:\n{self.remaining}")
@@ -30,7 +33,7 @@ class Parser(Generic[S, O]):
         always defer to ``parser1`` and then ``parser2``.
     """
     def __init__(self) -> None:
-        self.matcher: Callable[[S, Iterator[S]], Optional[O]] = lambda tok, rest: False
+        self.matcher: Callable[[S, Iterator[S]], Optional[O]] = lambda tok, rest: None
         self.choices: List["Parser[S, O]"] = []
 
     def exactly(self, token: S, factory: Callable[[S], O]) -> "Parser[S, O]":
@@ -66,12 +69,16 @@ class Parser(Generic[S, O]):
         """Cute syntax for supplying alternatives. Allows you to use something like ``(parser1 | parser2).run()``"""
         self.choice([other])
         return self
+    def __or__(self, other: "Parser[S, O]") -> "Parser[S, O]":
+        """Cute syntax for supplying alternatives. Allows you to use something like ``(parser1 | parser2).run()``"""
+        self.choice([other])
+        return self
 
     def run(self, iter: Iterator[S]) -> O:
         """Run this parser."""
-        tok = next(iter, None)
-        tees = tee(iter, len(self.choices) + 1)
-        if (out := self.matcher(tok, tees[-1])) is not None:
+        ourTee, *tees = tee(iter, len(self.choices) + 1)
+        tok = next(ourTee, None)
+        if (out := self.matcher(tok, ourTee)) is not None:
             return out
         for teenum, subparser in enumerate(self.choices):
             try:
