@@ -14,9 +14,14 @@ My goals for the project are as follows:
 
 PRs, issues, and contributions welcome. Thanks for reading.
 
+TODO
+---
+* Some way to easily repeat parsers without calling `Parser.then` over and over again. You can do some silly stuff like `parser.then(parser)`, but at some point you're gonna blow the stack and then nobody's having fun.
+* A test suite!
+
 Using the library
 ---
-Everything revolves around the `Parser` object. Construct one, then pass a factory to `Parser.exactly` or combine it with other parsers with `Parser.choice` or `Parser.then`. A parser that didn't have `Parser.exactly` called will always fail, and will either end the chain it is in or proceed to the next alternative. It is dead simple -- the rest is up to you. Here's a fun recipe:
+Everything revolves around the `Parser` object, and that's your building block for everything else. Construct one, then pass a factory to `Parser.exactly` or combine it with other parsers with `Parser.choice` or `Parser.then`. A parser that didn't have `Parser.exactly` called will always fail, and will either end the chain it is in or proceed to the next alternative. It is dead simple -- the rest is up to you. Here's a fun recipe:
 
 ```py
 from pycoparsec import Parser
@@ -28,6 +33,16 @@ def string_parser(wanted_string):
     return out
 
 string_parser("Hello").run(c for c in "Hello, world!") # => "Hello"
+```
+
+Or maybe you're more _alternative_?
+
+```py
+from pycoparsec import Parser
+
+only_accept_0_to_9 = Parser().exactly(1, str) | Parser().exactly(2, str) | Parser().exactly(3, str) | Parser().exactly(4, str) | Parser().exactly(5, str) | Parser().exactly(6, str) | Parser().exactly(7, str) | Parser().exactly(8, str) | Parser().exactly(9, str) | Parser().exactly(0, str) 
+
+only_accept_0_to_9.run(n for n in range(100)) # => 0
 ```
 
 Building the docs, running the tests, you know...
