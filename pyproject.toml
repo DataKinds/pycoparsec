@@ -5,16 +5,18 @@ build-backend = "hatchling.build"
 [project]
 name = "pycoparsec"
 dynamic = ["version"]
-description = ''
+description = 'A proof-of-concept parser combinator library employing stack frame closures.'
 readme = "README.md"
-requires-python = ">=3.7"
-license = "MIT"
+requires-python = ">=3.8"
+license = "LGPL-3.0-or-later"
 keywords = []
 authors = [
   { name = "DataKinds", email = "tslimkemann42@gmail.com" },
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 2 - Pre-Alpha",
+  "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+  "Topic :: Text Processing",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
@@ -26,9 +28,9 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Documentation = "https://github.com/unknown/pycoparsec#readme"
-Issues = "https://github.com/unknown/pycoparsec/issues"
-Source = "https://github.com/unknown/pycoparsec"
+Documentation = "https://github.com/DataKinds/pycoparsec#readme"
+Issues = "https://github.com/DataKinds/pycoparsec/issues"
+Source = "https://github.com/DataKinds/pycoparsec"
 
 [tool.hatch.version]
 path = "src/pycoparsec/__about__.py"
